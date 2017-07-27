@@ -46,4 +46,5 @@ add_executable(tp1_main
     "src/kernel.cl"
     "include/common.hpp"
 )
+#message(${OpenCV_LIBRARIES})
 target_link_libraries(tp1_main ${OpenCV_LIBRARIES} OpenCL)
