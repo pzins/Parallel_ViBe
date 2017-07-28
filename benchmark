@@ -18,19 +18,18 @@ Duration : 142.276
 
 === OpenCL ===
 laptop :
-precision : 0.762307
-recall : 0.952236
-f-measure : 0.846752
+precision : 0.765838
+recall : 0.953133
+f-measure : 0.849282
 
-Duration : 9.63704
+Duration : 9.37938
 
 lab computer :
-precision : 0.0170788
-recall    : 0.00113338
-f-measure : 0.0021257
+precision : 0.768377
+recall    : 0.954921
+f-measure : 0.851552
 
-Duration : 9.08766
-
+Duration : 9.94795
 
 
 === SYCL ===
