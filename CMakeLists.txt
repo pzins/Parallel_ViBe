@@ -19,6 +19,7 @@ set(COMPUTECPP_PACKAGE_ROOT_DIR /usr/local/computecpp)
 
 set(MODE "cpu" CACHE INTERNAL "")
 
+
 ########################
 ## solution config below
 project(Parallel_ViBe)
@@ -48,33 +49,40 @@ configure_file(
 )
 
 if(${MODE} MATCHES "cpu")
-add_executable(tp1_main
-    "src/main.cpp"
-    "src/vibe_cpu.cpp"
-    "include/common.hpp"
-)
-target_link_libraries(tp1_main ${OpenCV_LIBRARIES})
+    message("Mode : CPU")
+    add_executable(${PROJECT_NAME}
+        "src/main.cpp"
+        "src/vibe_cpu.cpp"
+        "include/common.hpp"
+    )
+    target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
 
 elseif(${MODE} MATCHES "opencl")
-add_executable(tp1_main
-	"src/main.cpp"
-    "src/vibe_opencl.cpp"
-    "src/kernel.cl"
-    "include/common.hpp"  )
-target_link_libraries(tp1_main ${OpenCV_LIBRARIES} OpenCL)
+    message("Mode : OpenCL")
+    add_executable(${PROJECT_NAME}
+            "src/main.cpp"
+        "src/vibe_opencl.cpp"
+        "src/kernel.cl"
+        "include/common.hpp"
+    )
+    target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES} OpenCL)
 
-elseif(${MODE} MATCHES "opencl")
-include(FindComputeCpp)
-include_directories(${COMPUTECPP_INCLUDE_DIRECTORY})
-add_executable(tp1_main
-	"src/main.cpp"
-    "src/vibe_sycl.cpp"
-    "src/kernel.cl"
-    "include/common.hpp"  )
-target_compile_options(tp1_main PUBLIC -std=c++11 -Wall)
-add_sycl_to_target(tp1_main  ${CMAKE_CURRENT_BINARY_DIR}
-                    /home/pierre/OpenCL-SYCL/Parallel_ViBe/src/vibe_sycl.cpp)
-target_link_libraries(tp1_main ${OpenCV_LIBRARIES} OpenCL)
+elseif(${MODE} MATCHES "sycl")
+    message("Mode : SYCL")
+    include(FindComputeCpp)
+    include_directories(${COMPUTECPP_INCLUDE_DIRECTORY})
+
+    add_executable(${PROJECT_NAME}
+        "src/main.cpp"
+        "src/vibe_sycl.cpp"
+        "include/common.hpp"
+    )
+
+   target_compile_options(${PROJECT_NAME} PUBLIC -std=c++11 -Wall)
+   add_sycl_to_target(${PROJECT_NAME}  ${CMAKE_CURRENT_BINARY_DIR} "${CMAKE_SOURCE_DIR}/src/vibe_sycl.cpp")
+   target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+
 else(${MODE} MATCHES cpu)
-message("Error Configuration : -DMODE=cpu|opencl|sycl")
+    message("Error Configuration : -DMODE=cpu|opencl|sycl")
+
 endif(${MODE} MATCHES cpu)

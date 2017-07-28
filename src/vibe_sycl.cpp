@@ -1,5 +1,5 @@
 
-#include "tp1/common.hpp"
+#include "common.hpp"
 #include <CL/sycl.hpp>
 typedef unsigned long long int iterator;
 using namespace cl::sycl;

@@ -1,5 +1,5 @@
 
-#include "tp1/common.hpp"
+#include "common.hpp"
 
 
 // local implementation for ViBe segmentation algorithm
@@ -207,7 +207,3 @@ void ViBe_impl::apply(const cv::Mat& oCurrFrame, cv::Mat& oOutputMask) {
     //morphologic operation
 //    applyMorpho(oOutputMask);
 }
-
-
-
-
