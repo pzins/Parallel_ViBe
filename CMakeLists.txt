@@ -12,7 +12,8 @@ endforeach(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE INTERNAL "")
 set(DATA_ROOT_PATH "${CMAKE_SOURCE_DIR}/data" CACHE INTERNAL "")
-
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+set(COMPUTECPP_PACKAGE_ROOT_DIR /usr/local/computecpp)
 ########################
 ## solution config below
 project(inf6803_h2017)
@@ -22,6 +23,9 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:DEB
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG>)
 find_package(OpenCV 3.0 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
+
+
+message(/usr/local/computecpp/include)
 link_directories(${OpenCV_LIBRARY_DIRS})
 add_definitions(${OpenCV_DEFINITIONS})
 mark_as_advanced(OPENCV_FOUND OpenCV_FOUND OpenCV_DIR)
@@ -40,11 +44,25 @@ configure_file(
     "${CMAKE_SOURCE_DIR}/include/common.hpp.conf"
     "${CMAKE_BINARY_DIR}/include/common.hpp"
 )
-add_executable(tp1_main
-    "src/main.cpp"
-    "src/vibe_cpu.cpp"
-    "src/kernel.cl"
-    "include/common.hpp"
-)
+#add_executable(tp1_main
+ #   "src/main.cpp"
+  #  "src/vibe_cpu.cpp"
+   # "src/kernel.cl"
+    #"include/common.hpp"
+#)
 #message(${OpenCV_LIBRARIES})
+include(FindComputeCpp)
+
+include_directories(${COMPUTECPP_INCLUDE_DIRECTORY})
+
+add_executable(tp1_main     
+	"src/main.cpp"
+    "src/vibe_sycl.cpp"
+    "src/kernel.cl"
+    "include/common.hpp"  )
+target_compile_options(tp1_main PUBLIC -std=c++11 -Wall)
+
+add_sycl_to_target(tp1_main  ${CMAKE_CURRENT_BINARY_DIR}
+                    /home/pierre/OpenCL-SYCL/Parallel_ViBe/src/vibe_sycl.cpp)
+
 target_link_libraries(tp1_main ${OpenCV_LIBRARIES} OpenCL)

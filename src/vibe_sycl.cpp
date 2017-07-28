@@ -1,8 +1,9 @@
 
 #include "tp1/common.hpp"
 #include <CL/cl.h>
-
+#include <CL/sycl.hpp>
 typedef unsigned long long int iterator;
+using namespace cl::sycl;
 
 char* readSource(char* kernelPath);
 
@@ -29,18 +30,21 @@ struct ViBe_impl : ViBe {
     size_t img_size;
     size_t background_size;
 
-    unsigned char* h_background;
+    uchar* h_background;
+	int h_randoms[2];
 
-    cl_mem d_image;
-    cl_mem d_output;
-    cl_mem d_background;
-    cl_mem d_random;
 
     cl_program program;
     cl_kernel kernel;
 
 //    unsigned int* h_debug;
 //    cl_mem debug_buff;
+
+	queue myQueue;
+//	buffer<uchar, 1> dd_image;
+	buffer<uchar, 1> d_background;
+	//buffer<uchar, 1> dd_output;
+	buffer<int, 1> d_randoms;
 };
 
 std::shared_ptr<ViBe> ViBe::createInstance(size_t N, size_t R, size_t nMin, size_t nSigma) {
@@ -51,44 +55,18 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
     m_N(N),
     m_R(R),
     m_nMin(nMin),
-    m_nSigma(nSigma) {
+    m_nSigma(nSigma),
+	h_background(new uchar[320*240*3*20]),
+	d_background(h_background, range<1>(320*240*3*20)),
+	d_randoms(h_randoms, range<1>(2)) {
 
-    cl_uint numPlatforms = 0;
 
-    status = clGetPlatformIDs(0, NULL, &numPlatforms);
-    platforms = (cl_platform_id*) malloc(numPlatforms * sizeof(cl_platform_id));
-    status = clGetPlatformIDs(numPlatforms, platforms, NULL);
-
-    numDevices = 0;
-    status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
-    devices = (cl_device_id*) malloc(numDevices * sizeof(cl_device_id));
-    status =clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
-
-    context = clCreateContext(NULL, numDevices, devices, NULL, NULL, &status);
-    cmdQueue = clCreateCommandQueue(context, devices[0], 0, &status);
-    img_size = 320 * 240;
-    background_size = img_size * 3 * 20;
-    h_background = (unsigned char*)new unsigned int[background_size * sizeof(unsigned char)]();
-
-//    h_debug = (unsigned int*)new unsigned int[img_size];
-//    for(iterator i = 0; i < img_size; ++i)
-//        h_debug[i] = 0;
-
-    d_image = clCreateBuffer(context, CL_MEM_READ_ONLY, img_size * 3,  NULL, &ret_code);
-    d_output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, img_size,  NULL, &ret_code);
-    d_background = clCreateBuffer(context, CL_MEM_READ_WRITE, background_size * sizeof(unsigned char), NULL, &ret_code); //maybe use char istead of int to save memory
-    d_random = clCreateBuffer(context, CL_MEM_READ_ONLY, 2 * sizeof(int), NULL, &ret_code);
-//    debug_buff = clCreateBuffer(context, CL_MEM_READ_WRITE, 4 * (img_size / 3), NULL, &ret_code);
+ 
 
 }
 
 ViBe_impl::~ViBe_impl() {
-    delete h_background;
-    clReleaseDevice(*devices);
-    clReleaseKernel(kernel);
-    clReleaseProgram(program);
-    clReleaseCommandQueue(cmdQueue);
-    clReleaseContext(context);
+  
 }
 
 
@@ -111,108 +89,56 @@ void ViBe_impl::initialize(const cv::Mat& oInitFrame) {
         }
     }
 
-    status = clEnqueueWriteBuffer(cmdQueue, d_background, CL_TRUE, 0, background_size * sizeof(unsigned char), h_background, 0, NULL, NULL);
-
-    // read kernel
-    char* progSource = readSource("/home/pierre/dev/Parallel_ViBe/src/tp1/kernel.cl");
-    size_t progSize = strlen(progSource);
-    program = clCreateProgramWithSource(context, 1, (const char**)&progSource,
-                            &progSize, &status);
-
-    status = clBuildProgram(program, numDevices, devices, NULL, NULL, NULL);
-
-    if(status != 0) {
-        std::cout << "Error build prog " << status << std::endl;
-        size_t log_size;
-        clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
-
-        // Allocate memory for the log
-        char *log = (char *) malloc(log_size);
-
-        // Get the log
-        clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
-
-        // Print the log
-        printf("%s\n", log);
-    }
-
-    // create kernel
-    kernel = clCreateKernel(program, "vecadd", &status);
-    if(status != 0) std::cout << "Error create kernel" << std::endl;
-
-    status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_image);
-    status = clSetKernelArg(kernel, 1, sizeof(cl_mem), &d_background);
-    status = clSetKernelArg(kernel, 2, sizeof(cl_mem), &d_random);
-    status = clSetKernelArg(kernel, 3, sizeof(cl_mem), &d_output);
-//    status = clSetKernelArg(kernel, 4, sizeof(cl_mem), &debug_buff);
 }
-
-
 
 
 void ViBe_impl::apply(const cv::Mat& oCurrFrame, cv::Mat& oOutputMask) {
     CV_Assert(!oCurrFrame.empty() && oCurrFrame.isContinuous() && oCurrFrame.type()==CV_8UC3);
     oOutputMask.create(oCurrFrame.size(),CV_8UC1); //TODO output is binary, but always stored in a byte (so output values are either '0' or '255')
     size_t frame_size = oCurrFrame.cols * oCurrFrame.rows;
+h_randoms[0] = rand()%16;
+h_randoms[1] = rand()%20;
+{
 
-    int randoms[2] = {rand() % 16, rand() % 20};
-    status = clEnqueueWriteBuffer(cmdQueue, d_image, CL_TRUE, 0, frame_size * 3, oCurrFrame.data, 0, NULL, NULL);
-    status = clEnqueueWriteBuffer(cmdQueue, d_random, CL_TRUE, 0, 2*sizeof(int), randoms, 0, NULL, NULL);
-//    status = clEnqueueWriteBuffer(cmdQueue, debug_buff, CL_TRUE, 0, img_size*4, h_debug, 0, NULL, NULL);
+buffer<uchar, 1> d_image(oCurrFrame.data, range<1>(frame_size * 3));
+buffer<uchar, 1> d_output(oOutputMask.data, range<1>(frame_size));
+// create a command_group to issue commands to the queue
+myQueue.submit([&](handler& cgh) {
+    // request access to the buffer
+    auto image = d_image.get_access<access::mode::read>(cgh);
+    auto output = d_output.get_access<access::mode::write>(cgh);
+    auto background = d_background.get_access<access::mode::read_write>(cgh);
+	auto randoms = d_randoms.get_access<access::mode::read>(cgh);
+    // enqueue a prallel_for task
+    cgh.parallel_for<class simple_test>(range<1>(320*240), [=](id<1> idx) {
+        //output[idx] = image[idx[0]*3];
+        int nb_matchs = 0;
+        int dist = 0;
 
-    size_t indexSpaceSize = frame_size;
-    status = clEnqueueNDRangeKernel(cmdQueue, kernel, 1, NULL, &indexSpaceSize, NULL, 0, NULL, NULL);
-    status = clEnqueueReadBuffer(cmdQueue, d_output, CL_TRUE, 0, frame_size, oOutputMask.data, 0, NULL, NULL);
-//    status = clEnqueueReadBuffer(cmdQueue, debug_buff, CL_TRUE, 0, frame_size * 4, h_debug, 0, NULL, NULL);
+        for(int j = 0; j < 20; ++j) {
+            dist = (background[idx[0] * 3 * 20 + j * 3] - image[idx[0] * 3]) * (background[idx[0] * 3 * 20 + j * 3] - image[idx[0] * 3]) +
+            (background[idx[0] * 3 * 20 + j * 3 + 1] - image[idx[0] * 3 + 1]) * (background[idx[0] * 3 * 20 + j * 3 + 1] - image[idx[0] * 3 + 1]) +
+            (background[idx[0] * 3 * 20 + j * 3 + 2] - image[idx[0] * 3 + 2]) * (background[idx[0] * 3 * 20 + j * 3 + 2] - image[idx[0] * 3 + 2]);
+            if(dist <= 20*40)
+                nb_matchs++;
+        }
+        if(nb_matchs >= 1) {
+			if(randoms[0] == 0) {
+				 background[idx[0] * 3 * 20 + 3 * randoms[1]] = image[idx[0] * 3];
+				 background[idx[0] * 3 * 20 + 3 * randoms[1] + 1] = image[idx[0] * 3 + 1];
+				 background[idx[0] * 3 * 20 + 3 * randoms[1] + 2] = image[idx[0] * 3 + 2];
+			 }
+            output[idx[0]] = 0;
+        } else {
+            output[idx[0]] = 255;
+        }
 
+    }); // end of the kernel function
+}); // end of our commands for this queue
+}
+	
 //    filtre median
-    cv::medianBlur(oOutputMask, oOutputMask, 9);
+//    cv::medianBlur(oOutputMask, oOutputMask, 9);
 }
 
-
-// This function reads in a text file and stores it as a char pointer
-char* readSource(char* kernelPath) {
-
-   cl_int status;
-   FILE *fp;
-   char *source;
-   long int size;
-
-   printf("Program file is: %s\n", kernelPath);
-
-   fp = fopen(kernelPath, "rb");
-   if(!fp) {
-      printf("Could not open kernel file\n");
-      exit(-1);
-   }
-   status = fseek(fp, 0, SEEK_END);
-   if(status != 0) {
-      printf("Error seeking to end of file\n");
-      exit(-1);
-   }
-   size = ftell(fp);
-   if(size < 0) {
-      printf("Error getting file position\n");
-      exit(-1);
-   }
-
-   rewind(fp);
-
-   source = (char *)malloc(size + 1);
-
-   int i;
-   for (i = 0; i < size+1; i++) {
-      source[i]='\0';
-   }
-
-   if(source == NULL) {
-      printf("Error allocating space for the kernel source\n");
-      exit(-1);
-   }
-
-   fread(source, 1, size, fp);
-   source[size] = '\0';
-
-   return source;
-}
 
