@@ -1,7 +1,7 @@
 __kernel
 void vecadd( __global unsigned char* img, __global unsigned char* background,  __global int* randoms, __global unsigned char* output)//, __global unsigned int* debug)
 {
-   unsigned long long int x = get_global_id(0);
+   unsigned long int x = get_global_id(0);
    int nb_matchs = 0;
    int dist;
    for(int j = 0; j < 20; j++)

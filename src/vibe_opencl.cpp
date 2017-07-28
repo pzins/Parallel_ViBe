@@ -44,9 +44,7 @@ struct ViBe_impl : ViBe {
 };
 
 std::shared_ptr<ViBe> ViBe::createInstance(size_t N, size_t R, size_t nMin, size_t nSigma) {
-    std::cout << "|" << KERNEL_FILE << "|" << std::endl;
     return std::shared_ptr<ViBe>(new ViBe_impl(N,R,nMin,nSigma));
-
 }
 
 ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
@@ -167,8 +165,8 @@ void ViBe_impl::apply(const cv::Mat& oCurrFrame, cv::Mat& oOutputMask) {
     status = clEnqueueReadBuffer(cmdQueue, d_output, CL_TRUE, 0, frame_size, oOutputMask.data, 0, NULL, NULL);
 //    status = clEnqueueReadBuffer(cmdQueue, debug_buff, CL_TRUE, 0, frame_size * 4, h_debug, 0, NULL, NULL);
 
-//    filtre median
-    cv::medianBlur(oOutputMask, oOutputMask, 9);
+   // filtre median
+   cv::medianBlur(oOutputMask, oOutputMask, 9);
 }
 
 
