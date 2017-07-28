@@ -15,8 +15,8 @@ int main(int /*argc*/, char** /*argv*/) {
 
         const std::string sBaseDataPath(DATA_ROOT_PATH "/tp1/");
         const std::vector<std::string> vsSequenceNames = {"highway"};
-        const std::vector<size_t> vnSequenceSizes = {1700,1099,1499};
-        for(size_t nSeqIdx=0; nSeqIdx<vsSequenceNames.size()-2; ++nSeqIdx) {
+        const std::vector<size_t> vnSequenceSizes = {1700};
+        for(size_t nSeqIdx=0; nSeqIdx<vsSequenceNames.size(); ++nSeqIdx) {
             std::cout << "\nProcessing sequence '" << vsSequenceNames[nSeqIdx] << "'..." << std::endl;
             const std::string sInitFramePath = sBaseDataPath+vsSequenceNames[nSeqIdx]+"/input/in000001.jpg";
             const cv::Mat oInitFrame = cv::imread(sInitFramePath);
