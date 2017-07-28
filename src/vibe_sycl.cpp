@@ -1,6 +1,5 @@
 
 #include "tp1/common.hpp"
-#include <CL/cl.h>
 #include <CL/sycl.hpp>
 typedef unsigned long long int iterator;
 using namespace cl::sycl;
@@ -18,34 +17,16 @@ struct ViBe_impl : ViBe {
     const size_t m_nMin; //< internal ViBe parameter; required number of matches for background classification
     const size_t m_nSigma; //< internal ViBe parameter; model update rate
 
-    // OpenCL
-    cl_int ret_code;
-    cl_int status;
-    cl_platform_id *platforms;
-    cl_device_id *devices;
-    cl_uint numDevices;
-    cl_context context;
-    cl_command_queue cmdQueue;
-
-    size_t img_size;
-    size_t background_size;
-
+    size_t image_size;
     uchar* h_background;
 	int h_randoms[2];
 
-
-    cl_program program;
-    cl_kernel kernel;
-
-//    unsigned int* h_debug;
-//    cl_mem debug_buff;
     gpu_selector mySelector;
-    cl::sycl::context myContext;
+    context myContext;
 	queue myQueue;
-//	buffer<uchar, 1> dd_image;
-	buffer<uchar, 1> d_background;
-	//buffer<uchar, 1> dd_output;
-	buffer<int, 1> d_randoms;
+
+    buffer<uchar, 1> background_buffer;
+	buffer<int, 1> randoms_buffer;
 };
 
 std::shared_ptr<ViBe> ViBe::createInstance(size_t N, size_t R, size_t nMin, size_t nSigma) {
@@ -57,14 +38,12 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
     m_R(R),
     m_nMin(nMin),
     m_nSigma(nSigma),
-	h_background(new uchar[320*240*3*20]),
-	d_background(h_background, range<1>(320*240*3*20)),
-	d_randoms(h_randoms, range<1>(2)),
+    image_size(320*240),
+	h_background(new uchar[image_size*3*20]),
+	background_buffer(h_background, range<1>(image_size*3*20)),
+	randoms_buffer(h_randoms, range<1>(2)),
     myContext(mySelector, false),
     myQueue(myContext, mySelector) {
-
-
-
 
 }
 
@@ -80,14 +59,13 @@ void ViBe_impl::initialize(const cv::Mat& oInitFrame) {
     {
         for(int j = 1; j < oInitFrame.cols-1; ++j)
         {
-
             cv::Vec3b neighbours[] = {oInitFrame.at<cv::Vec3b>(i-1,j-1), oInitFrame.at<cv::Vec3b>(i-1,j), oInitFrame.at<cv::Vec3b>(i-1,j+1), oInitFrame.at<cv::Vec3b>(i,j-1),
                                   oInitFrame.at<cv::Vec3b>(i,j+1), oInitFrame.at<cv::Vec3b>(i+1,j-1), oInitFrame.at<cv::Vec3b>(i+1,j), oInitFrame.at<cv::Vec3b>(i+1,j+1)};
             for(int k = 0; k < 20; ++k)
             {
-                h_background[i * 3 * 20 * oInitFrame.cols + (j * 3 * 20 )+ (k * 3)] = (unsigned char) neighbours[rand() % 8][0];
-                h_background[i * 3 * 20 * oInitFrame.cols + (j * 3 * 20 )+ (k * 3) + 1] = (unsigned char) neighbours[rand() % 8][1];
-                h_background[i * 3 * 20 * oInitFrame.cols + (j * 3 * 20 )+ (k * 3) + 2] = (unsigned char) neighbours[rand() % 8][2];
+                h_background[i * 3 * 20 * oInitFrame.cols + (j * 3 * 20 )+ (k * 3)] = neighbours[rand() % 8][0];
+                h_background[i * 3 * 20 * oInitFrame.cols + (j * 3 * 20 )+ (k * 3) + 1] = neighbours[rand() % 8][1];
+                h_background[i * 3 * 20 * oInitFrame.cols + (j * 3 * 20 )+ (k * 3) + 2] = neighbours[rand() % 8][2];
             }
         }
     }
@@ -99,47 +77,49 @@ void ViBe_impl::apply(const cv::Mat& oCurrFrame, cv::Mat& oOutputMask) {
     CV_Assert(!oCurrFrame.empty() && oCurrFrame.isContinuous() && oCurrFrame.type()==CV_8UC3);
     oOutputMask.create(oCurrFrame.size(),CV_8UC1); //TODO output is binary, but always stored in a byte (so output values are either '0' or '255')
     size_t frame_size = oCurrFrame.cols * oCurrFrame.rows;
-h_randoms[0] = rand()%16;
-h_randoms[1] = rand()%20;
-{
 
-buffer<uchar, 1> d_image(oCurrFrame.data, range<1>(frame_size * 3));
-buffer<uchar, 1> d_output(oOutputMask.data, range<1>(frame_size));
-// create a command_group to issue commands to the queue
-myQueue.submit([&](handler& cgh) {
-    // request access to the buffer
-    auto image = d_image.get_access<access::mode::read>(cgh);
-    auto output = d_output.get_access<access::mode::write>(cgh);
-    auto background = d_background.get_access<access::mode::read_write>(cgh);
-	auto randoms = d_randoms.get_access<access::mode::read>(cgh);
-    // enqueue a prallel_for task
-    cgh.parallel_for<class simple_test>(range<1>(320*240), [=](id<1> idx) {
-        //output[idx] = image[idx[0]*3];
-        int nb_matchs = 0;
-        int dist = 0;
+    h_randoms[0] = rand()%16;
+    h_randoms[1] = rand()%20;
 
-        for(int j = 0; j < 20; ++j) {
-            dist = (background[idx[0] * 3 * 20 + j * 3] - image[idx[0] * 3]) * (background[idx[0] * 3 * 20 + j * 3] - image[idx[0] * 3]) +
-            (background[idx[0] * 3 * 20 + j * 3 + 1] - image[idx[0] * 3 + 1]) * (background[idx[0] * 3 * 20 + j * 3 + 1] - image[idx[0] * 3 + 1]) +
-            (background[idx[0] * 3 * 20 + j * 3 + 2] - image[idx[0] * 3 + 2]) * (background[idx[0] * 3 * 20 + j * 3 + 2] - image[idx[0] * 3 + 2]);
-            if(dist <= 20*40)
-                nb_matchs++;
-        }
-        if(nb_matchs >= 1) {
-			if(randoms[0] == 0) {
-				 background[idx[0] * 3 * 20 + 3 * randoms[1]] = image[idx[0] * 3];
-				 background[idx[0] * 3 * 20 + 3 * randoms[1] + 1] = image[idx[0] * 3 + 1];
-				 background[idx[0] * 3 * 20 + 3 * randoms[1] + 2] = image[idx[0] * 3 + 2];
-			 }
-            output[idx[0]] = 0;
-        } else {
-            output[idx[0]] = 255;
-        }
+    {
+        buffer<uchar, 1> image_buffer(oCurrFrame.data, range<1>(frame_size * 3));
+        buffer<uchar, 1> output_buffer(oOutputMask.data, range<1>(frame_size));
+        // create a command_group to issue commands to the queue
+        myQueue.submit([&](handler& cgh) {
 
-    }); // end of the kernel function
-}); // end of our commands for this queue
-}
+            // request access to the buffer
+            auto d_image = image_buffer.get_access<access::mode::read>(cgh);
+            auto d_output = output_buffer.get_access<access::mode::write>(cgh);
+            auto d_background = background_buffer.get_access<access::mode::read_write>(cgh);
+        	auto d_randoms = randoms_buffer.get_access<access::mode::read>(cgh);
+            // enqueue a prallel_for task
 
-//    filtre median
-//    cv::medianBlur(oOutputMask, oOutputMask, 9);
+            cgh.parallel_for<class simple_test>(range<1>(image_size), [=](id<1> idx) {
+                int nb_matchs = 0;
+                int dist = 0;
+
+                for(int j = 0; j < 20; ++j) {
+                    dist = (d_background[idx[0] * 3 * 20 + j * 3] - d_image[idx[0] * 3]) * (d_background[idx[0] * 3 * 20 + j * 3] - d_image[idx[0] * 3]) +
+                    (d_background[idx[0] * 3 * 20 + j * 3 + 1] - d_image[idx[0] * 3 + 1]) * (d_background[idx[0] * 3 * 20 + j * 3 + 1] - d_image[idx[0] * 3 + 1]) +
+                    (d_background[idx[0] * 3 * 20 + j * 3 + 2] - d_image[idx[0] * 3 + 2]) * (d_background[idx[0] * 3 * 20 + j * 3 + 2] - d_image[idx[0] * 3 + 2]);
+                    if(dist <= 20*40)
+                        nb_matchs++;
+                }
+                if(nb_matchs >= 1) {
+        			if(d_randoms[0] == 0) {
+        				 d_background[idx[0] * 3 * 20 + 3 * d_randoms[1]] = d_image[idx[0] * 3];
+        				 d_background[idx[0] * 3 * 20 + 3 * d_randoms[1] + 1] = d_image[idx[0] * 3 + 1];
+        				 d_background[idx[0] * 3 * 20 + 3 * d_randoms[1] + 2] = d_image[idx[0] * 3 + 2];
+        			 }
+                    d_output[idx[0]] = 0;
+                } else {
+                    d_output[idx[0]] = 255;
+                }
+
+            }); // end of the kernel function
+        }); // end of our commands for this queue
+    } // end of scope, so we wait for the queued work to complete
+
+    //  filtre median
+    cv::medianBlur(oOutputMask, oOutputMask, 9);
 }

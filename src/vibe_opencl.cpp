@@ -1,7 +1,7 @@
 
-#include "tp1/common.hpp"
+#include "common.hpp"
 #include <CL/cl.h>
-
+#include <stdio.h>
 typedef unsigned long long int iterator;
 
 char* readSource(char* kernelPath);
@@ -44,7 +44,9 @@ struct ViBe_impl : ViBe {
 };
 
 std::shared_ptr<ViBe> ViBe::createInstance(size_t N, size_t R, size_t nMin, size_t nSigma) {
+    std::cout << "|" << KERNEL_FILE << "|" << std::endl;
     return std::shared_ptr<ViBe>(new ViBe_impl(N,R,nMin,nSigma));
+
 }
 
 ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
@@ -114,7 +116,7 @@ void ViBe_impl::initialize(const cv::Mat& oInitFrame) {
     status = clEnqueueWriteBuffer(cmdQueue, d_background, CL_TRUE, 0, background_size * sizeof(unsigned char), h_background, 0, NULL, NULL);
 
     // read kernel
-    char* progSource = readSource("/home/pierre/dev/Parallel_ViBe/src/tp1/kernel.cl");
+    char* progSource = readSource(KERNEL_FILE);
     size_t progSize = strlen(progSource);
     program = clCreateProgramWithSource(context, 1, (const char**)&progSource,
                             &progSize, &status);
@@ -215,4 +217,3 @@ char* readSource(char* kernelPath) {
 
    return source;
 }
-

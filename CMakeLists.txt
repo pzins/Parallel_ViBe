@@ -12,20 +12,22 @@ endforeach(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE INTERNAL "")
 set(DATA_ROOT_PATH "${CMAKE_SOURCE_DIR}/data" CACHE INTERNAL "")
+set(KERNEL_FILE "${CMAKE_SOURCE_DIR}/src/kernel.cl" CACHE INTERNAL "")
+
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(COMPUTECPP_PACKAGE_ROOT_DIR /usr/local/computecpp)
+
+set(MODE "cpu" CACHE INTERNAL "")
+
 ########################
 ## solution config below
-project(inf6803_h2017)
+project(Parallel_ViBe)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:DEBUG>)
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG>)
 find_package(OpenCV 3.0 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-
-
-message(/usr/local/computecpp/include)
 link_directories(${OpenCV_LIBRARY_DIRS})
 add_definitions(${OpenCV_DEFINITIONS})
 mark_as_advanced(OPENCV_FOUND OpenCV_FOUND OpenCV_DIR)
@@ -44,25 +46,35 @@ configure_file(
     "${CMAKE_SOURCE_DIR}/include/common.hpp.conf"
     "${CMAKE_BINARY_DIR}/include/common.hpp"
 )
-#add_executable(tp1_main
- #   "src/main.cpp"
-  #  "src/vibe_cpu.cpp"
-   # "src/kernel.cl"
-    #"include/common.hpp"
-#)
-#message(${OpenCV_LIBRARIES})
+
+if(${MODE} MATCHES "cpu")
+add_executable(tp1_main
+    "src/main.cpp"
+    "src/vibe_cpu.cpp"
+    "include/common.hpp"
+)
+target_link_libraries(tp1_main ${OpenCV_LIBRARIES})
+
+elseif(${MODE} MATCHES "opencl")
+add_executable(tp1_main
+	"src/main.cpp"
+    "src/vibe_opencl.cpp"
+    "src/kernel.cl"
+    "include/common.hpp"  )
+target_link_libraries(tp1_main ${OpenCV_LIBRARIES} OpenCL)
+
+elseif(${MODE} MATCHES "opencl")
 include(FindComputeCpp)
-
 include_directories(${COMPUTECPP_INCLUDE_DIRECTORY})
-
-add_executable(tp1_main     
+add_executable(tp1_main
 	"src/main.cpp"
     "src/vibe_sycl.cpp"
     "src/kernel.cl"
     "include/common.hpp"  )
 target_compile_options(tp1_main PUBLIC -std=c++11 -Wall)
-
 add_sycl_to_target(tp1_main  ${CMAKE_CURRENT_BINARY_DIR}
                     /home/pierre/OpenCL-SYCL/Parallel_ViBe/src/vibe_sycl.cpp)
-
 target_link_libraries(tp1_main ${OpenCV_LIBRARIES} OpenCL)
+else(${MODE} MATCHES cpu)
+message("Error Configuration : -DMODE=cpu|opencl|sycl")
+endif(${MODE} MATCHES cpu)
