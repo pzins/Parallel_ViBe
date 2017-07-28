@@ -39,7 +39,8 @@ struct ViBe_impl : ViBe {
 
 //    unsigned int* h_debug;
 //    cl_mem debug_buff;
-
+    gpu_selector mySelector;
+    cl::sycl::context myContext;
 	queue myQueue;
 //	buffer<uchar, 1> dd_image;
 	buffer<uchar, 1> d_background;
@@ -58,15 +59,17 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
     m_nSigma(nSigma),
 	h_background(new uchar[320*240*3*20]),
 	d_background(h_background, range<1>(320*240*3*20)),
-	d_randoms(h_randoms, range<1>(2)) {
+	d_randoms(h_randoms, range<1>(2)),
+    myContext(mySelector, false),
+    myQueue(myContext, mySelector) {
 
 
- 
+
 
 }
 
 ViBe_impl::~ViBe_impl() {
-  
+
 }
 
 
@@ -136,9 +139,7 @@ myQueue.submit([&](handler& cgh) {
     }); // end of the kernel function
 }); // end of our commands for this queue
 }
-	
+
 //    filtre median
 //    cv::medianBlur(oOutputMask, oOutputMask, 9);
 }
-
-
