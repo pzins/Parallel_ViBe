@@ -21,8 +21,6 @@ struct ViBe_impl : ViBe {
     uchar* h_background;
 	int h_randoms[2];
 
-    gpu_selector mySelector;
-    context myContext;
 	queue myQueue;
 
     buffer<uchar, 1> background_buffer;
@@ -41,9 +39,12 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
     image_size(320*240),
 	h_background(new uchar[image_size*3*20]),
 	background_buffer(h_background, range<1>(image_size*3*20)),
-	randoms_buffer(h_randoms, range<1>(2)),
-    myContext(mySelector, false),
-    myQueue(myContext, mySelector) {
+    randoms_buffer(h_randoms, range<1>(2))
+    {
+    if(OPENCL_DEVICE == "cpu")
+        myQueue = queue(cpu_selector());
+    else
+        myQueue = queue(gpu_selector());
 
 }
 
