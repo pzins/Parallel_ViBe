@@ -55,6 +55,10 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
 
     cl_uint numPlatforms = 0;
 
+    // platform 0 => gpu
+    // platform 1 => cPU
+    // avec tjrs 1 seul device
+
     status = clGetPlatformIDs(0, NULL, &numPlatforms);
     platforms = (cl_platform_id*) malloc(numPlatforms * sizeof(cl_platform_id));
     status = clGetPlatformIDs(numPlatforms, platforms, NULL);
@@ -63,6 +67,12 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
     status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
     devices = (cl_device_id*) malloc(numDevices * sizeof(cl_device_id));
     status =clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+
+    char n[50];
+    size_t t;
+    clGetDeviceInfo(*devices, CL_DEVICE_NAME, 50*sizeof(char), n, &t);
+    printf("%s\n", n);
+    printf("%d\n", numDevices);
 
     context = clCreateContext(NULL, numDevices, devices, NULL, NULL, &status);
     cmdQueue = clCreateCommandQueue(context, devices[0], 0, &status);
