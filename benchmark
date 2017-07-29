@@ -18,27 +18,47 @@ Duration : 142.276
 
 === OpenCL ===
 laptop :
-precision : 0.762307
-recall : 0.952236
-f-measure : 0.846752
+*** GPU ***
+precision : 0.765838
+recall : 0.953133
+f-measure : 0.849282
 
-Duration : 9.63704
+Duration : 9.37938
+
 
 lab computer :
-precision : 0.0170788
-recall    : 0.00113338
-f-measure : 0.0021257
+*** GPU ***
+precision : 0.7681
+ recall    : 0.95083
+ f-measure : 0.849752
 
-Duration : 9.08766
+All done.
+Duration : 9.71177
+
+*** CPU ***
+precision : 0.763587
+recall    : 0.94852
+f-measure : 0.846066
+
+All done.
+Duration : 17.1106
 
 
 
 === SYCL ===
 
 lab computer :
+*** GPU ***
 precision : 0.683257
 recall    : 0.971352
 f-measure : 0.802224
 
 All done.
 Duration : 23.1236
+
+*** CPU ***
+precision : 0.683696
+recall    : 0.971648
+f-measure : 0.802627
+
+Duration : 31.8844
