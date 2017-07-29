@@ -1,7 +1,7 @@
-
 #include "common.hpp"
 #include <CL/cl.h>
 #include <stdio.h>
+
 typedef unsigned long long int iterator;
 
 char* readSource(char* kernelPath);
@@ -47,6 +47,8 @@ std::shared_ptr<ViBe> ViBe::createInstance(size_t N, size_t R, size_t nMin, size
     return std::shared_ptr<ViBe>(new ViBe_impl(N,R,nMin,nSigma));
 }
 
+
+
 ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
     m_N(N),
     m_R(R),
@@ -55,27 +57,30 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
 
     cl_uint numPlatforms = 0;
 
-    // platform 0 => gpu
-    // platform 1 => cPU
-    // avec tjrs 1 seul device
-
     status = clGetPlatformIDs(0, NULL, &numPlatforms);
     platforms = (cl_platform_id*) malloc(numPlatforms * sizeof(cl_platform_id));
     status = clGetPlatformIDs(numPlatforms, platforms, NULL);
 
-    numDevices = 0;
-    status = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
-    devices = (cl_device_id*) malloc(numDevices * sizeof(cl_device_id));
-    status =clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
+    // computer lab : 1 platform, 2 devices (AMD GPU, Intel CPU)
+    // my laptop : 2 platforms (1 with Nvidia GPU, 2 with Intel CPU)
+    // by default : 0, 0 => GPU both cases
+    // choosing CPU => 0,1 if lab computer or 1,0 if my lapop
+    int platform_id = 0, device_id = 0;
+    if(numPlatforms > 1) {
+        if(OPENCL_DEVICE == "cpu")
+            platform_id = 1;
+    } else {
+        if(OPENCL_DEVICE == "cpu")
+            device_id = 1;
+    }
 
-    char n[50];
-    size_t t;
-    clGetDeviceInfo(*devices, CL_DEVICE_NAME, 50*sizeof(char), n, &t);
-    printf("%s\n", n);
-    printf("%d\n", numDevices);
+    numDevices = 0;
+    status = clGetDeviceIDs(platforms[platform_id], CL_DEVICE_TYPE_ALL, 0, NULL, &numDevices);
+    devices = (cl_device_id*) malloc(numDevices * sizeof(cl_device_id));
+    status =clGetDeviceIDs(platforms[platform_id], CL_DEVICE_TYPE_ALL, numDevices, devices, NULL);
 
     context = clCreateContext(NULL, numDevices, devices, NULL, NULL, &status);
-    cmdQueue = clCreateCommandQueue(context, devices[0], 0, &status);
+    cmdQueue = clCreateCommandQueue(context, devices[device_id], 0, &status);
     img_size = 320 * 240;
     background_size = img_size * 3 * 20;
     h_background = (unsigned char*)new unsigned int[background_size * sizeof(unsigned char)]();
@@ -94,11 +99,11 @@ ViBe_impl::ViBe_impl(size_t N, size_t R, size_t nMin, size_t nSigma) :
 
 ViBe_impl::~ViBe_impl() {
     delete h_background;
-    clReleaseDevice(*devices);
-    clReleaseKernel(kernel);
-    clReleaseProgram(program);
-    clReleaseCommandQueue(cmdQueue);
-    clReleaseContext(context);
+    if(devices) clReleaseDevice(*devices);
+    if(kernel) clReleaseKernel(kernel);
+    if(program) clReleaseProgram(program);
+    if(cmdQueue) clReleaseCommandQueue(cmdQueue);
+    if(context) clReleaseContext(context);
 }
 
 
@@ -134,13 +139,13 @@ void ViBe_impl::initialize(const cv::Mat& oInitFrame) {
     if(status != 0) {
         std::cout << "Error build prog " << status << std::endl;
         size_t log_size;
-        clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+        clGetProgramBuildInfo(program, devices[numDevices], CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
 
         // Allocate memory for the log
         char *log = (char *) malloc(log_size);
 
         // Get the log
-        clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+        clGetProgramBuildInfo(program, devices[numDevices], CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
 
         // Print the log
         printf("%s\n", log);
