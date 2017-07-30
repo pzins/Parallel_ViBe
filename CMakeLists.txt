@@ -62,7 +62,7 @@ if(${MODE} MATCHES "cpu")
 elseif(${MODE} MATCHES "opencl")
     message("Mode : OpenCL")
     add_executable(${PROJECT_NAME}
-            "src/main.cpp"
+        "src/main.cpp"
         "src/vibe_opencl.cpp"
         "src/kernel.cl"
         "include/common.hpp"
@@ -82,7 +82,7 @@ elseif(${MODE} MATCHES "sycl")
 
    target_compile_options(${PROJECT_NAME} PUBLIC -std=c++11 -Wall)
    add_sycl_to_target(${PROJECT_NAME}  ${CMAKE_CURRENT_BINARY_DIR} "${CMAKE_SOURCE_DIR}/src/vibe_sycl.cpp")
-   target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+   target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES} OpenCL)
 
 else(${MODE} MATCHES cpu)
     message("Error Configuration : -DMODE=cpu|opencl|sycl")
