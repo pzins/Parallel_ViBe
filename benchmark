@@ -12,7 +12,7 @@ precision : 0.936018
 recall    : 0.96531
 f-measure : 0.950438
 
-Duration : 142.276
+Duration : 134.155
 
 
 
@@ -23,7 +23,15 @@ precision : 0.765838
 recall : 0.953133
 f-measure : 0.849282
 
-Duration : 9.37938
+Duration : 7.88497
+
+
+*** CPU ***
+precision : 0.762244
+recall    : 0.955082
+f-measure : 0.847836
+
+Duration : 21.0539
 
 
 lab computer :
@@ -33,7 +41,7 @@ precision : 0.7681
  f-measure : 0.849752
 
 All done.
-Duration : 9.71177
+Duration : 7.56436
 
 *** CPU ***
 precision : 0.763587
@@ -41,7 +49,7 @@ recall    : 0.94852
 f-measure : 0.846066
 
 All done.
-Duration : 17.1106
+Duration : 15.169517
 
 
 
@@ -54,11 +62,11 @@ recall    : 0.971352
 f-measure : 0.802224
 
 All done.
-Duration : 23.1236
+Duration : 15.4234
 
 *** CPU ***
 precision : 0.683696
 recall    : 0.971648
 f-measure : 0.802627
 
-Duration : 31.8844
+Duration : 22.6034
