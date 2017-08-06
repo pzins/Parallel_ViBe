@@ -36,10 +36,10 @@ int main(int /*argc*/, char** /*argv*/) {
                 CV_Assert(!oCurrGTMask.empty() && oCurrGTMask.size()==oCurrFrame.size() && oCurrGTMask.type()==CV_8UC1);
                 oSeqAccumMetrics.accumulate(oOutputMask,oCurrGTMask); // we accumulate TP/TN/FP/FN here
                 // for display purposes only
-//                cv::imshow("input",oCurrFrame);
-//                cv::imshow("gt",oCurrGTMask);
-//                cv::imshow("output",oOutputMask);
-                cv::waitKey(1);
+                cv::imshow("input",oCurrFrame);
+                cv::imshow("gt",oCurrGTMask);
+                cv::imshow("output",oOutputMask);
+                cv::waitKey(0);
             }
 
 
