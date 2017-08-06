@@ -88,3 +88,9 @@ else(${MODE} MATCHES cpu)
     message("Error Configuration : -DMODE=cpu|opencl|sycl")
 
 endif(${MODE} MATCHES cpu)
+
+
+
+# cmake ../Parallel_ViBe/ -DMODE=sycl -DOPENCL_DEVICE=cpu
+# mode : cpu opencl sycl
+# opencl_device : cpu gpu
