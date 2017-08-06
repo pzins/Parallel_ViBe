@@ -17,7 +17,7 @@ int main(int /*argc*/, char** /*argv*/) {
         const std::vector<std::string> vsSequenceNames = {"highway"};
         const std::vector<size_t> vnSequenceSizes = {1700};
         for(size_t nSeqIdx=0; nSeqIdx<vsSequenceNames.size(); ++nSeqIdx) {
-            std::cout << "\nProcessing sequence '" << vsSequenceNames[nSeqIdx] << "'..." << std::endl;
+//            std::cout << "\nProcessing sequence '" << vsSequenceNames[nSeqIdx] << "'..." << std::endl;
             const std::string sInitFramePath = sBaseDataPath+vsSequenceNames[nSeqIdx]+"/input/in000001.jpg";
             const cv::Mat oInitFrame = cv::imread(sInitFramePath);
             CV_Assert(!oInitFrame.empty() && oInitFrame.type()==CV_8UC3);
@@ -25,7 +25,7 @@ int main(int /*argc*/, char** /*argv*/) {
             cv::Mat oOutputMask(oInitFrame.size(),CV_8UC1,cv::Scalar_<uchar>(0));
             BinClassif oSeqAccumMetrics;
             for(size_t nFrameIdx=1; nFrameIdx<vnSequenceSizes[nSeqIdx]; ++nFrameIdx) {
-                std::cout << "\tProcessing input # " << nFrameIdx+1 << " / " << vnSequenceSizes[nSeqIdx] << "..." << std::endl;
+//                std::cout << "\tProcessing input # " << nFrameIdx+1 << " / " << vnSequenceSizes[nSeqIdx] << "..." << std::endl;
                 const std::string sCurrFramePath = putf((sBaseDataPath+vsSequenceNames[nSeqIdx]+"/input/in%06d.jpg").c_str(),(int)(nFrameIdx+1));
                 const cv::Mat oCurrFrame = cv::imread(sCurrFramePath);
                 CV_Assert(!oCurrFrame.empty() && oInitFrame.size()==oCurrFrame.size() && oCurrFrame.type()==CV_8UC3);
