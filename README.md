@@ -8,5 +8,5 @@ Comparison of several implementations.
 5. SYCL - several threads
 
 
-[Description](__pzins.github.io__)
+__[Description](pzins.github.io)__
 
